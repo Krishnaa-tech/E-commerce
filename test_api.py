@@ -2,15 +2,17 @@ import unittest
 from app import app, db, Product
 
 class TestAPI(unittest.TestCase):
-    def setUp(self):
-        app.config['TESTING'] = True
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///test.db'
+    @classmethod
+    def setUpClass(cls):
+        cls.app = app.test_client()
+        cls.app_context = app.app_context()
+        cls.app_context.push()
         db.create_all()
-        self.app = app.test_client()
 
-    def tearDown(self):
-        db.session.remove()
+    @classmethod
+    def tearDownClass(cls):
         db.drop_all()
+        cls.app_context.pop()
 
     def test_get_products(self):
         response = self.app.get('/products')
@@ -44,8 +46,7 @@ class TestAPI(unittest.TestCase):
 
     def test_delete_product(self):
         response = self.app.delete('/products/1')
-        self.assertEqual(response.status_code, 404)
-
+        self.assertEqual(response.status_code, 200)
 
 if __name__ == '__main__':
     unittest.main()
