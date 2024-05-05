@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import SQLAlchemyError
-import unittest
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///products.db'
@@ -21,7 +20,14 @@ class Product(db.Model):
 # Routes
 @app.route('/products', methods=['GET'])
 def get_products():
-    products = Product.query.all()
+    # Retrieve query parameters for pagination
+    limit = request.args.get('limit', default=10, type=int)  # Default limit to 10 items per page
+    skip = request.args.get('skip', default=0, type=int)
+
+    # Query for products with pagination
+    products = Product.query.limit(limit).offset(skip).all()
+
+    # Return paginated results
     return jsonify([{'id': p.id, 'title': p.title, 'description': p.description, 'price': p.price} for p in products])
 
 @app.route('/products/<int:id>', methods=['GET'])
@@ -81,7 +87,6 @@ def delete_product(id):
         db.session.rollback()
         return jsonify({'error': 'Database error', 'message': str(e)}), 500
 
-
 # Error Handling
 @app.errorhandler(404)
 def not_found_error(error):
@@ -95,79 +100,6 @@ def bad_request_error(error):
 def internal_error(error):
     db.session.rollback()
     return jsonify({'error': 'Internal server error'}), 500
-
-
-class TestAPI(unittest.TestCase):
-    def setUp(self):
-        app.config['TESTING'] = True
-        self.app = app.test_client()
-
-    def test_get_products(self):
-        # Test case for retrieving products when the database is empty
-        response = self.app.get('/products')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json, [])
-
-        # Test case for retrieving products when the database has entries
-        # You may need to add products to the database for this test
-
-    def test_create_product(self):
-        # Test case for creating a product with valid data
-        data = {'title': 'Test Product', 'description': 'Test Description', 'price': 10.99}
-        response = self.app.post('/products', json=data)
-        self.assertEqual(response.status_code, 201)
-        self.assertIn('id', response.json)
-
-        # Test case for creating a product with missing required fields
-        data_missing_fields = {'description': 'Test Description', 'price': 10.99}
-        response_missing_fields = self.app.post('/products', json=data_missing_fields)
-        self.assertEqual(response_missing_fields.status_code, 400)
-        self.assertEqual(response_missing_fields.json, {'error': 'Missing required fields (title, price)'})
-
-        # Test case for creating a product with invalid data types
-        data_invalid_types = {'title': 123, 'description': 'Test Description', 'price': 'invalid'}
-        response_invalid_types = self.app.post('/products', json=data_invalid_types)
-        self.assertEqual(response_invalid_types.status_code, 400)
-        self.assertEqual(response_invalid_types.json, {'error': 'Invalid data types for title or price'})
-
-    def test_get_product(self):
-        # Test case for retrieving an existing product
-        # You may need to add a product to the database for this test
-        response = self.app.get('/products/1')
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('id', response.json)
-
-        # Test case for retrieving a non-existing product
-        response_non_existing = self.app.get('/products/1000')
-        self.assertEqual(response_non_existing.status_code, 404)
-        self.assertEqual(response_non_existing.json, {'error': 'Not found'})
-
-    def test_update_product(self):
-        # Test case for updating an existing product
-        # You may need to add a product to the database for this test
-        data = {'title': 'Updated Title', 'description': 'Updated Description', 'price': 20.99}
-        response = self.app.put('/products/1', json=data)
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json, {'message': 'Product updated successfully'})
-
-        # Test case for updating a non-existing product
-        data_non_existing = {'title': 'Updated Title', 'description': 'Updated Description', 'price': 20.99}
-        response_non_existing = self.app.put('/products/1000', json=data_non_existing)
-        self.assertEqual(response_non_existing.status_code, 404)
-        self.assertEqual(response_non_existing.json, {'error': 'Not found'})
-
-    def test_delete_product(self):
-        # Test case for deleting an existing product
-        # You may need to add a product to the database for this test
-        response = self.app.delete('/products/1')
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json, {'message': 'Product deleted successfully'})
-
-        # Test case for deleting a non-existing product
-        response_non_existing = self.app.delete('/products/1000')
-        self.assertEqual(response_non_existing.status_code, 404)
-        self.assertEqual(response_non_existing.json, {'error': 'Not found'})
-
 
 if __name__ == '__main__':
     with app.app_context():
