@@ -52,18 +52,25 @@
 <ol start="2">
   <li>Navigate to the project directory:</li>
 </ol>
-
 <pre><code>cd &lt;project_directory&gt;
 </code></pre>
 
 <ol start="3">
+  <li>Create and activate a virtual environment:</li>
+</ol>
+
+<pre><code>python -m venv venv
+source venv/bin/activate  # For Unix/Linux
+venv\Scripts\activate      # For Windows</code></pre>
+
+<ol start="4">
   <li>Install dependencies using pip:</li>
 </ol>
 
 <pre><code>pip install -r requirements.txt
 </code></pre>
 
-<ol start="4">
+<ol start="5">
   <li>Run the Flask application:</li>
 </ol>
 
